@@ -8,15 +8,18 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Backend Repository') {
             steps {
-                checkout scm
+                dir('app') {
+                    git branch: 'main',
+                        url: 'https://github.com/MiladJoodi/MERN_Stack_CRUD.git'
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                dir('backend') {
+                dir('app/backend') {
                     sh 'npm install'
                 }
             }
@@ -24,8 +27,8 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                dir('backend') {
-                    echo "Skipping tests for now..."
+                dir('app/backend') {
+                    echo "Skipping tests"
                     // sh 'npm test'
                 }
             }
@@ -33,10 +36,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir('backend') {
+                dir('app/backend') {
                     sh '''
-                        docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                    docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
                     '''
                 }
             }
@@ -51,39 +54,15 @@ pipeline {
                 )]) {
 
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
-                        docker push $IMAGE_NAME:$IMAGE_TAG
-                        docker push $IMAGE_NAME:latest
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    docker push $IMAGE_NAME:latest
 
-                        docker logout
+                    docker logout
                     '''
                 }
             }
-        }
-
-        stage('Deploy') {
-            steps {
-                echo "Deployment stage..."
-                // Later you can:
-                // 1. Update Helm values.yaml
-                // 2. Commit & push changes to infra repo
-                // 3. ArgoCD will sync automatically
-            }
-        }
-    }
-
-    post {
-        always {
-            echo "Pipeline execution completed."
-        }
-
-        success {
-            echo "Build #${BUILD_NUMBER} completed successfully."
-        }
-
-        failure {
-            echo "Pipeline failed. Check the console output for details."
         }
     }
 }
