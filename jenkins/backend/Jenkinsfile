@@ -25,8 +25,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 dir('backend') {
-                    # sh 'npm test || true'
-                    echo "TEST"
+                    echo "Skipping tests for now..."
+                    // sh 'npm test'
                 }
             }
         }
@@ -34,7 +34,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('backend') {
-                    sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+                    sh '''
+                        docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+                    '''
                 }
             }
         }
@@ -48,8 +51,12 @@ pipeline {
                 )]) {
 
                     sh '''
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push $IMAGE_NAME:$IMAGE_TAG
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                        docker push $IMAGE_NAME:$IMAGE_TAG
+                        docker push $IMAGE_NAME:latest
+
+                        docker logout
                     '''
                 }
             }
@@ -57,8 +64,26 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo "Deployment stage"
+                echo "Deployment stage..."
+                // Later you can:
+                // 1. Update Helm values.yaml
+                // 2. Commit & push changes to infra repo
+                // 3. ArgoCD will sync automatically
             }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline execution completed."
+        }
+
+        success {
+            echo "Build #${BUILD_NUMBER} completed successfully."
+        }
+
+        failure {
+            echo "Pipeline failed. Check the console output for details."
         }
     }
 }
