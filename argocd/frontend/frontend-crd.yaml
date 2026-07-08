@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: frontend
+  namespace: argocd
+
+spec:
+
+  project: default
+
+  source:
+    repoURL: https://github.com/saurabh-chamola/infra.git
+    targetRevision: main
+    path: helm-charts/frontend/
+
+    helm:
+      valueFiles:
+        - values.yaml
+
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: frontend
+
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
