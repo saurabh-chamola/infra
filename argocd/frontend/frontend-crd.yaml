@@ -7,7 +7,7 @@ metadata:
 
 spec:
 
-  project: default
+  project: dev-project
 
   source:
     repoURL: https://github.com/saurabh-chamola/infra.git
