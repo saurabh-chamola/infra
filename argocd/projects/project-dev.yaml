@@ -1,0 +1,86 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+
+metadata:
+  name: dev-project
+  namespace: argocd
+
+spec:
+  description: Development environment project for application testing
+
+  # Allowed Git repositories
+  sourceRepos:
+    - https://github.com/saurabh-chamola/infra
+
+  # Allowed deployment destinations
+destinations:
+
+  - namespace: frontend
+    server: https://kubernetes.default.svc
+
+  - namespace: backend
+    server: https://kubernetes.default.svc
+
+  # Allow namespace-level Kubernetes resources
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+
+    - group: ""
+      kind: Service
+
+    - group: ""
+      kind: ConfigMap
+
+    - group: ""
+      kind: Secret
+
+    - group: networking.k8s.io
+      kind: Ingress
+
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+
+
+  # Allow creation of namespaces in dev environment
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+
+  # Block dangerous cluster-wide resources
+  clusterResourceBlacklist:
+
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+
+  roles:
+
+    # Developer access
+    - name: developer
+
+      description: Developers can view and sync development applications
+
+      policies:
+        - p, proj:dev-project:developer, applications, get, dev-project/*, allow
+        - p, proj:dev-project:developer, applications, sync, dev-project/*, allow
+
+      groups:
+        - developers
+
+
+
+    # DevOps access
+    - name: devops-admin
+
+      description: Full access for DevOps team in development environment
+
+      policies:
+        - p, proj:dev-project:devops-admin, applications, *, dev-project/*, allow
+
+      groups:
+        - devops-team
