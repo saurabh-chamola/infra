@@ -2,11 +2,14 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "saurabh0010/mern-frontend"
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_NAME   = "saurabh0010/mern-frontend"
+        IMAGE_TAG    = "${BUILD_NUMBER}"
+        INFRA_REPO   = "github.com/saurabh-chamola/infra.git"
+        INFRA_BRANCH = "main"
     }
 
     stages {
+
         stage('Checkout Frontend Repository') {
             steps {
                 dir('app') {
@@ -37,8 +40,8 @@ pipeline {
             steps {
                 dir('app/frontend') {
                     sh '''
-                        docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                    docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
                     '''
                 }
             }
@@ -52,11 +55,56 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push $IMAGE_NAME:$IMAGE_TAG
-                        docker push $IMAGE_NAME:latest
-                        docker logout
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    docker push $IMAGE_NAME:latest
+
+                    docker logout
                     '''
+                }
+            }
+        }
+
+        stage('Checkout Infra Repository') {
+            steps {
+                dir('infra') {
+                    git branch: "${INFRA_BRANCH}",
+                        url: "https://${INFRA_REPO}",
+                        credentialsId: 'GitCreds'
+                }
+            }
+        }
+
+        stage('Update Helm values.yaml') {
+            steps {
+                dir('infra') {
+                    sh '''
+                    yq -i '.image.tag = strenv(IMAGE_TAG)' helm-charts/frontend/values.yaml
+                    cat helm-charts/frontend/values.yaml
+                    '''
+                }
+            }
+        }
+
+        stage('Commit and Push to Infra Repo') {
+            steps {
+                dir('infra') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'GitCreds',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                    )]) {
+                        sh '''
+                        git config user.email "jenkins@ci.local"
+                        git config user.name "Jenkins CI"
+
+                        git add helm-charts/frontend/values.yaml
+                        git commit -m "Update frontend image tag to $IMAGE_TAG" || echo "No changes to commit"
+
+                        git push https://$GIT_USER:$GIT_PASS@${INFRA_REPO} HEAD:${INFRA_BRANCH}
+                        '''
+                    }
                 }
             }
         }
