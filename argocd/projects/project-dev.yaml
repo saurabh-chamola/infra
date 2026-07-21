@@ -13,7 +13,7 @@ spec:
     - https://github.com/saurabh-chamola/infra
 
   # Allowed deployment destinations
-destinations:
+  destinations:
 
   - namespace: frontend
     server: https://kubernetes.default.svc

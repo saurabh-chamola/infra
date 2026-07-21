@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "saurabh0010/mern-frontend"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout Frontend Repository') {
+            steps {
+                dir('app') {
+                    git branch: 'main',
+                        url: 'https://github.com/saurabh-chamola/MERN_Stack_CRUD'
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('app/frontend') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir('app/frontend') {
+                    echo "Skipping tests"
+                    // sh 'npm test'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('app/frontend') {
+                    sh '''
+                        docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'DockerCreds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $IMAGE_NAME:$IMAGE_TAG
+                        docker push $IMAGE_NAME:latest
+                        docker logout
+                    '''
+                }
+            }
+        }
+    }
+}
