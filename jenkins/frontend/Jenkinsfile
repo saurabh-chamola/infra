@@ -19,6 +19,30 @@ pipeline {
             }
         }
 
+        stage('Check Frontend Changes') {
+            steps {
+                dir('app') {
+                    script {
+                        def changedFiles = sh(
+                            script: 'git diff --name-only HEAD~1 HEAD',
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Changed files:\n${changedFiles}"
+
+                        def frontendChanged = changedFiles.readLines().any {
+                            it.startsWith("frontend/")
+                        }
+
+                        if (!frontendChanged) {
+                            currentBuild.result = 'NOT_BUILT'
+                            error("No changes detected in frontend/. Skipping pipeline.")
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 dir('app/frontend') {
